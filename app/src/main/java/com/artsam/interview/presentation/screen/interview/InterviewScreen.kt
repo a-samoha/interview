@@ -1,17 +1,21 @@
-package com.artsam.interview.presentation.screen
+package com.artsam.interview.presentation.screen.interview
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.outlined.KeyboardArrowRight
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -24,43 +28,50 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.artsam.interview.R
 import com.artsam.interview.data.entity.InterviewQuestion
 import com.artsam.interview.presentation.theme.AppTheme
+import java.lang.Exception
 import kotlin.random.Random
 
+private const val DEFAULT_RECENT_QUESTIONS_AMOUNT = 10
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun QuestionScreen(
-    viewModel: QuestionViewModel
+fun InterviewScreen(
+    viewModel: InterviewViewModel
 ) {
     val state = viewModel.state.collectAsStateWithLifecycle().value
 
     Scaffold(
-        modifier = Modifier
-            .background(Color.Gray)
-            .fillMaxSize(),
+        modifier = Modifier.fillMaxSize(),
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = "Android Interview",
+                        text = stringResource(R.string.android_interview),
                         style = MaterialTheme.typography.headlineMedium,
                     )
                 })
         }
     ) { paddingValues ->
-
+        val scaffoldPaddingModifier = Modifier.padding(paddingValues)
         when (state) {
-            QuestionUiState.Initialising -> Text(text = "Loading ...")
-            is QuestionUiState.Content -> Content(
+            InterviewState.Initialising -> {
+                viewModel.handleIntent(InterviewIntent.FetchQuestions(LocalContext.current))
+                Box(
+                    modifier = scaffoldPaddingModifier,
+                    contentAlignment = Alignment.Center
+                ) { Text(text = stringResource(R.string.loading)) }
+            }
+            is InterviewState.Content -> Content(
                 state = state,
-                modifier = Modifier
-                    .padding(paddingValues)
+                modifier = scaffoldPaddingModifier
             )
         }
     }
@@ -68,36 +79,33 @@ fun QuestionScreen(
 
 @Composable
 fun Content(
-    state: QuestionUiState.Content,
+    state: InterviewState.Content,
     modifier: Modifier = Modifier
 ) {
-    val questionState = remember {
-        mutableStateOf(state.questions.first())
-    }
+    val questionState = remember { mutableStateOf(state.questions.first()) }
+    val recentQuestionIndexes = remember { RecentValues<Int>(DEFAULT_RECENT_QUESTIONS_AMOUNT) }
 
-    Box(
-        modifier = modifier
-            .background(Color.Blue)
-    ) {
-        Column(
-            modifier.background(Color.Green)
-        ) {
+    Box(modifier) {
+        Column(modifier = Modifier.padding(0.dp, 8.dp)) {
             val question = questionState.value
-            TitleItem("Level:", question.level.name)
-            TitleItem("Topic:", question.topic)
-            TitleItem("Question:", question.question)
-            AnswerItem("Answer", question.answer)
+            ContentItem(stringResource(R.string.level), listOf(question.level.name))
+            ContentItem(stringResource(R.string.topic), listOf(question.topic))
+            ContentItem(stringResource(R.string.question), listOf(question.question))
+            ContentItem(stringResource(R.string.answer), question.answer)
         }
         IconButton(
-            onClick = { /*TODO*/ },
+            onClick = {
+                val previousQuestionIndex = recentQuestionIndexes.getPrevious()
+                questionState.value = state.questions[previousQuestionIndex]
+            },
             modifier = Modifier
                 .fillMaxHeight()
-                .width(150.dp)
+                .width(60.dp)
                 .align(Alignment.CenterStart)
         ) {
             Icon(
                 imageVector = Icons.Outlined.KeyboardArrowLeft,
-                contentDescription = "",
+                contentDescription = "button previous",
                 modifier = Modifier
                     .align(Alignment.CenterStart)
                     .padding(start = 16.dp),
@@ -105,16 +113,24 @@ fun Content(
         }
         IconButton(
             onClick = {
-                questionState.value = state.questions[Random.nextInt(state.questions.size)]
+                val nextQuestionIndex =
+                    try {
+                        recentQuestionIndexes.getNext()
+                    } catch (e: Exception) {
+                        val index = Random.nextInt(state.questions.size)
+                        recentQuestionIndexes.add(index)
+                        index
+                    }
+                questionState.value = state.questions[nextQuestionIndex]
             },
             modifier = Modifier
                 .fillMaxHeight()
-                .width(150.dp)
-                .align(Alignment.CenterEnd)
+                .width(60.dp)
+                .align(Alignment.CenterEnd),
         ) {
             Icon(
                 imageVector = Icons.Outlined.KeyboardArrowRight,
-                contentDescription = "",
+                contentDescription = "button next",
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .padding(end = 16.dp),
@@ -124,50 +140,32 @@ fun Content(
 }
 
 @Composable
-fun TitleItem(
-    title: String,
-    value: String,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp, 0.dp)
-    ) {
-        Text(text = title)
-        Text(text = value)
-    }
-}
-
-@Composable
-fun AnswerItem(
+fun ContentItem(
     title: String,
     answers: List<String>,
-    modifier: Modifier = Modifier
 ) {
-    Row(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp, 0.dp)
+            .padding(16.dp, 8.dp)
     ) {
+        val offsetX = (maxWidth * 23 / 100)
+        val width = (maxWidth - offsetX)
         Text(text = title)
-        Column {
-            answers.forEach {
-                Text(text = it)
+        Card(
+            modifier = Modifier
+                .width(width)
+                .offset(x = offsetX, y = 0.dp),
+            elevation = CardDefaults.outlinedCardElevation(4.dp)
+        ) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
+                answers.forEach { Text(text = it, modifier = Modifier.padding(12.dp)) }
             }
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
 
 
 @Preview(showSystemUi = true)
@@ -175,19 +173,8 @@ fun AnswerItem(
 fun MainPreview() {
     AppTheme {
         Content(
-            QuestionUiState.Content(
+            InterviewState.Content(
                 listOf(
-                    InterviewQuestion(
-                        level = InterviewQuestion.Level.JUNIOR,
-                        topic = "Базові питання",
-                        question = "Назвіть основні принципи ООП",
-                        answer = listOf(
-                            "Абстракция: Представление реальных объектов в коде. Она позволяет сконцентрироваться на важных аспектах объекта, игнорируя несущественные.",
-                            "Инкапсуляция: Скрытие деталей реализации. Это обеспечивает безопасность данных и уменьшает сложность программы.",
-                            "Наследование: Использование свойств и методов одного класса в другом. Это способствует повторному использованию кода.",
-                            "Полиморфизм: Возможность использовать объекты разных классов с одинаковым интерфейсом без информации о конкретном классе. Это упрощает работу с различными типами данных."
-                        ),
-                    ),
                     InterviewQuestion(
                         level = InterviewQuestion.Level.JUNIOR,
                         topic = "Базові питання",
@@ -197,7 +184,7 @@ fun MainPreview() {
                             "Интерфейс: Определяет поведение (методы), которое должны реализовывать классы, но не предоставляет их реализацию.",
                             "Различие: Классы представляют собой конкретную реализацию, в то время как интерфейсы определяют только структуру поведения, которую классы должны следовать.",
                         ),
-                    )
+                    ),
                 )
             )
         )
