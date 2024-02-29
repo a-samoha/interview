@@ -1,5 +1,7 @@
 package com.artsam.interview.presentation.screen.interview
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -9,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -19,7 +22,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -30,13 +32,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.artsam.interview.R
 import com.artsam.interview.data.entity.InterviewQuestion
 import com.artsam.interview.presentation.theme.AppTheme
-import java.lang.Exception
 import kotlin.random.Random
 
 private const val DEFAULT_RECENT_QUESTIONS_AMOUNT = 10
@@ -91,49 +94,74 @@ fun Content(
             ContentItem(stringResource(R.string.level), listOf(question.level.name))
             ContentItem(stringResource(R.string.topic), listOf(question.topic))
             ContentItem(stringResource(R.string.question), listOf(question.question))
-            ContentItem(stringResource(R.string.answer), question.answer)
+            Text(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentWidth()
+                    .padding(0.dp, 8.dp, 0.dp, 16.dp),
+                text = stringResource(R.string.answer),
+                fontSize = 20.sp
+            )
+            Card(
+                modifier = Modifier.padding(16.dp, 0.dp),
+                elevation = CardDefaults.outlinedCardElevation(4.dp)
+            ) {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    question.answer.forEach {
+                        Text(
+                            text = it,
+                            modifier = Modifier.padding(12.dp),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
         }
-        IconButton(
-            onClick = {
-                val previousQuestionIndex = recentQuestionIndexes.getPrevious()
-                questionState.value = state.questions[previousQuestionIndex]
-            },
+        Box(
             modifier = Modifier
                 .fillMaxHeight()
                 .width(60.dp)
                 .align(Alignment.CenterStart)
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() } // This is mandatory
+                ) {
+                    val previousQuestionIndex = recentQuestionIndexes.getPrevious()
+                    questionState.value = state.questions[previousQuestionIndex]
+                },
+            contentAlignment = Alignment.BottomCenter
         ) {
             Icon(
                 imageVector = Icons.Outlined.KeyboardArrowLeft,
                 contentDescription = "button previous",
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(start = 16.dp),
+                modifier = Modifier.padding(16.dp)
             )
         }
-        IconButton(
-            onClick = {
-                val nextQuestionIndex =
-                    try {
-                        recentQuestionIndexes.getNext()
-                    } catch (e: Exception) {
-                        val index = Random.nextInt(state.questions.size)
-                        recentQuestionIndexes.add(index)
-                        index
-                    }
-                questionState.value = state.questions[nextQuestionIndex]
-            },
+        Box(
             modifier = Modifier
                 .fillMaxHeight()
                 .width(60.dp)
-                .align(Alignment.CenterEnd),
+                .align(Alignment.CenterEnd)
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() } // This is mandatory
+                ) {
+                    val nextQuestionIndex =
+                        try {
+                            recentQuestionIndexes.getNext()
+                        } catch (e: Exception) {
+                            val index = Random.nextInt(state.questions.size)
+                            recentQuestionIndexes.add(index)
+                            index
+                        }
+                    questionState.value = state.questions[nextQuestionIndex]
+                },
+            contentAlignment = Alignment.BottomCenter
         ) {
             Icon(
                 imageVector = Icons.Outlined.KeyboardArrowRight,
                 contentDescription = "button next",
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 16.dp),
+                modifier = Modifier.padding(16.dp)
             )
         }
     }
@@ -149,18 +177,17 @@ fun ContentItem(
             .fillMaxWidth()
             .padding(16.dp, 8.dp)
     ) {
+        Text(text = title)
+
         val offsetX = (maxWidth * 23 / 100)
         val width = (maxWidth - offsetX)
-        Text(text = title)
         Card(
             modifier = Modifier
-                .width(width)
-                .offset(x = offsetX, y = 0.dp),
+                .offset(x = offsetX, y = 0.dp)
+                .width(width),
             elevation = CardDefaults.outlinedCardElevation(4.dp)
         ) {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState())
-            ) {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 answers.forEach { Text(text = it, modifier = Modifier.padding(12.dp)) }
             }
         }
