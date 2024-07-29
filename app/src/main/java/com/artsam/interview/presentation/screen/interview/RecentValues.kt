@@ -23,7 +23,7 @@ class RecentValues<T>(private val capacity: Int) {
 
     fun getNext(): T {
         val index = ++previousIndex
-        println("test getNext() previousIndex $previousIndex")
+        println("test getNext() index $index previousIndex $previousIndex")
         if (index != MAX_INDEX) return deque[index]
         else throw IndexOutOfBoundsException("")
     }
