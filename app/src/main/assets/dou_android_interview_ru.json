@@ -642,9 +642,19 @@
           {
             "questionText": "У вас є Activity з двома Fragment’ами, в одного є кнопка, в іншого — TextView. Якщо натискаєте кнопку, змінюється TextView. Як ви реалізуєте це?",
             "answerItems": [
-              "Для связи между фрагментами используйте callback-интерфейс в Activity. Когда пользователь нажимает кнопку в одном фрагменте, фрагмент вызывает метод интерфейса в Activity.",
-              "Activity, в свою очередь, обращается к другому фрагменту и вызывает метод для обновления TextView.",
-              "Такой подход обеспечивает разделение ответственности между фрагментами и Activity, улучшая модульность и управляемость кода."
+              "Вариант1  Используем callback-интерфейс в Activity:",
+              "interface FragmentListener {\nfun onButtonClick(value: String) }",
+              "Activity, реализует интерфейс и обращается к другому фрагменту вызывая метод для обновления TextView.",
+              "class MainActivity : AppCompatActivity(), FragmentListener {\n\toverride fun onButtonClick(value: String) {\n\tval fr = supportFragmentManager.findFragmentByTag(FIRST) as ExampleFragment1\n\tfr.receiveMsg(value) }}",
+              "class ExampleFr1 : Fragment() {\n\tfun receiveMsg(msg: String) {\ntextView.text = msg }}",
+              "class ExampleFr2 : Fragment() {\n\tval btnSend = rootView.findViewById<AppCompatButton>(R.id.btnSend)\n\t\tbtnSend?.let {\nit.setOnClickListener { (requireActivity() as MainActivity).onButtonClick(\"btn clicked\") }}",
+              "\nВариант2  Используем Flow",
+              "Cоздаю класс DataEmitter",
+              "class DataEmitter<T> {\n\tprivate val _dataFlow =\n\tMutableSharedFlow<T>(replay = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)\n\tval dataFlow: Flow<T> = _dataFlow.asSharedFlow()\n\tsuspend fun emitData(value: T) = _dataFlow.emit(value)}",
+              "Фрагмент с кнопкой создает объект этого эмиттера и эмитит в него:",
+              "class ExampleFr2 : Fragment() {\nval btnSend = rootView.findViewById<AppCompatButton>(R.id.btnSend)\n\t\tbtnSend?.let {\nit.setOnClickListener {\nlifecycleScope.launch { dataEmitter.emitData(\"New msg\") } }\n\ncompanion object {\n\tprivate val dataEmitter = DataEmitter<String>()\n\tfun getDataEmitter(): DataEmitter<String> = dataEmitter}",
+              "Фрагмент с текстовым полем подписывается на flow:",
+              "class ExampleFr1 : Fragment() {\n\tlifecycleScope.launch {\nExampleFragment2.getDataEmitter().dataFlow.collect {\ntextView.text = it}}}"
             ]
           },
           {

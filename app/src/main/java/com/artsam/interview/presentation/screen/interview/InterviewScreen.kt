@@ -40,7 +40,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.artsam.interview.R
 import com.artsam.interview.data.entity.InterviewQuestion
 import com.artsam.interview.presentation.theme.AppTheme
-import kotlin.random.Random
 
 private const val DEFAULT_RECENT_QUESTIONS_AMOUNT = 10
 
@@ -150,7 +149,8 @@ fun Content(
                         try {
                             recentQuestionIndexes.getNext()
                         } catch (e: Exception) {
-                            val index = Random.nextInt(state.questions.size)
+                            val index =
+                                state.questions.indexOfFirst { it.answer.firstOrNull { item -> item.contains("ExampleFr1") } != null }//Random.nextInt(state.questions.size)
                             recentQuestionIndexes.add(index)
                             index
                         }
